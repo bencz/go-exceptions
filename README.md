@@ -357,13 +357,11 @@ go-exceptions/
 │   └── integration_test.go     # Integration and complex scenario tests
 ├── cmd/
 │   └── demo/
-│       ├── main.go         # Demo application
-│       └── examples/
-│           ├── basic_examples.go   # Basic examples
-│           ├── advanced_examples.go # Advanced examples
-│           ├── custom_exceptions.go # Custom exception examples
-│           ├── quick_example.go    # Quick standalone example
-│           └── simple_demo.go      # Simple demo
+│       ├── basic_examples.go   # Basic examples
+│       ├── advanced_examples.go # Advanced examples
+│       ├── custom_exceptions.go # Custom exception examples
+│       ├── quick_example.go    # Quick standalone example
+│       └── simple_demo.go      # Simple demo
 ├── go.mod
 └── README.md
 ```
@@ -371,13 +369,14 @@ go-exceptions/
 ## Running Examples
 
 ```bash
-# Run complete demo
-go run ./cmd/demo
+# Basic Examples
+go run ./cmd/demo/quick_example.go     # Quick standalone example
+go run ./cmd/demo/simple_demo.go       # Simple demo with core functionality
+go run ./cmd/demo/basic_examples.go    # Basic usage patterns and syntax
 
-# Run individual examples
-go run ./cmd/demo/examples/quick_example.go     # Quick standalone example
-go run ./cmd/demo/examples/simple_demo.go       # Simple demo only
-go run ./cmd/demo/examples/custom_exceptions.go # Custom exceptions only
+# Advanced Examples
+go run ./cmd/demo/advanced_examples.go # Advanced features and complex scenarios
+go run ./cmd/demo/custom_exceptions.go # Custom exception types and usage
 ```
 
 ## Using as Package
