@@ -291,20 +291,22 @@ func TestFinallyBlock(t *testing.T) {
     })
 }
 
+// Custom exception type for testing
+type CustomException struct {
+    Code    int
+    Message string
+}
+
+func (e CustomException) Error() string {
+    return e.Message
+}
+
+func (e CustomException) TypeName() string {
+    return "CustomException"
+}
+
 func TestCustomExceptions(t *testing.T) {
     t.Run("Custom exception type", func(t *testing.T) {
-        type CustomException struct {
-            Code    int
-            Message string
-        }
-        
-        func (e CustomException) Error() string {
-            return e.Message
-        }
-        
-        func (e CustomException) TypeName() string {
-            return "CustomException"
-        }
         
         var caught bool
         var code int
