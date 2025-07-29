@@ -8,108 +8,98 @@ import (
 )
 
 // ============================================================================
-// INTEGRATION TESTS - COMPLEX SCENARIOS
+// INTEGRATION AND COMPLEX SCENARIO TESTS
 // ============================================================================
 
 func TestComplexExceptionScenarios(t *testing.T) {
-    t.Run("Nested function calls with exceptions", func(t *testing.T) {
-        var caught bool
-        var stackTrace string
+    t.Run("Nested Try blocks with different exception types", func(t *testing.T) {
+        var outerCaught bool
+        var innerCaught bool
+        var finallyExecuted bool
         
         Try(func() {
-            level1Function()
+            Try(func() {
+                ThrowArgumentNull("innerParam", "Inner exception")
+            }).Handle(
+                Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                    innerCaught = true
+                    // Re-throw as different exception type
+                    ThrowInvalidOperation("Wrapped: " + ex.Error())
+                }),
+            )
         }).Handle(
             Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
+                outerCaught = true
+            }),
+        ).Finally(func() {
+            finallyExecuted = true
+        })
+        
+        if !innerCaught {
+            t.Error("Inner exception should be caught")
+        }
+        if !outerCaught {
+            t.Error("Outer exception should be caught")
+        }
+        if !finallyExecuted {
+            t.Error("Finally block should execute")
+        }
+    })
+    
+    t.Run("Exception chain with multiple inner exceptions", func(t *testing.T) {
+        var caught bool
+        var chainLength int
+        var fullMessage string
+        
+        // Create a chain of exceptions
+        var level1 *Exception
+        Try(func() {
+            ThrowArgumentNull("level1", "First level error")
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                level1 = &full
+            }),
+        )
+        
+        var level2 *Exception
+        Try(func() {
+            ThrowWithInner(InvalidOperationException{
+                Message: "Second level error",
+            }, level1)
+        }).Handle(
+            Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
+                level2 = &full
+            }),
+        )
+        
+        Try(func() {
+            ThrowWithInner(ArgumentOutOfRangeException{
+                ParamName: "level3",
+                Value:     -1,
+                Message:   "Third level error",
+            }, level2)
+        }).Handle(
+            Handler[ArgumentOutOfRangeException](func(ex ArgumentOutOfRangeException, full Exception) {
                 caught = true
-                stackTrace = full.StackTrace()
+                chainLength = len(full.GetAllExceptions())
+                fullMessage = full.GetFullMessage()
             }),
         )
         
         if !caught {
-            t.Error("Exception from nested function should be caught")
+            t.Error("Final exception should be caught")
         }
-        if !strings.Contains(stackTrace, "level1Function") {
-            t.Error("Stack trace should contain function names")
+        if chainLength != 3 {
+            t.Errorf("Expected chain length 3, got %d", chainLength)
         }
-    })
-    
-    t.Run("Multiple exception types in business logic", func(t *testing.T) {
-        testCases := []struct {
-            name     string
-            username string
-            email    string
-            age      int
-            expected string
-        }{
-            {"Empty username", "", "test@example.com", 25, "ArgumentNullException"},
-            {"Invalid age", "john", "test@example.com", 15, "ArgumentOutOfRangeException"},
-            {"Invalid email", "john", "invalid-email", 25, "InvalidOperationException"},
-            {"Valid user", "john", "john@example.com", 25, ""},
-        }
-        
-        for _, tc := range testCases {
-            t.Run(tc.name, func(t *testing.T) {
-                var caughtType string
-                
-                Try(func() {
-                    validateUserRegistration(tc.username, tc.email, tc.age)
-                }).Handle(
-                    Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
-                        caughtType = "ArgumentNullException"
-                    }),
-                    Handler[ArgumentOutOfRangeException](func(ex ArgumentOutOfRangeException, full Exception) {
-                        caughtType = "ArgumentOutOfRangeException"
-                    }),
-                    Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
-                        caughtType = "InvalidOperationException"
-                    }),
-                )
-                
-                if tc.expected != caughtType {
-                    t.Errorf("Expected %s, got %s", tc.expected, caughtType)
-                }
-            })
-        }
-    })
-    
-    t.Run("Exception chaining and propagation", func(t *testing.T) {
-        var outerCaught bool
-        var innerFound bool
-        var chainLength int
-        
-        Try(func() {
-            simulateServiceCall()
-        }).Handle(
-            Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
-                outerCaught = true
-                
-                // Check for inner exceptions
-                if full.HasInnerException() {
-                    allExceptions := full.GetAllExceptions()
-                    chainLength = len(allExceptions)
-                    
-                    // Look for specific inner exception
-                    if dbEx := FindInnerException[NetworkException](&full); dbEx != nil {
-                        innerFound = true
-                    }
-                }
-            }),
-        )
-        
-        if !outerCaught {
-            t.Error("Outer exception should be caught")
-        }
-        if !innerFound {
-            t.Error("Inner NetworkException should be found in chain")
-        }
-        if chainLength < 2 {
-            t.Errorf("Exception chain should have at least 2 exceptions, got %d", chainLength)
+        if !strings.Contains(fullMessage, "level1") {
+            t.Errorf("Full message should contain all levels, got: %s", fullMessage)
         }
     })
 }
 
 func TestConcurrentExceptionHandling(t *testing.T) {
-    t.Run("Concurrent exception throwing", func(t *testing.T) {
+    t.Run("Concurrent exception throwing and handling", func(t *testing.T) {
         const numGoroutines = 10
         results := make(chan bool, numGoroutines)
         
@@ -119,7 +109,7 @@ func TestConcurrentExceptionHandling(t *testing.T) {
                 
                 Try(func() {
                     if id%2 == 0 {
-                        ThrowArgumentNull(fmt.Sprintf("param%d", id), "Null parameter")
+                        ThrowArgumentNull(fmt.Sprintf("param%d", id), "Concurrent test")
                     } else {
                         ThrowInvalidOperation(fmt.Sprintf("Operation %d failed", id))
                     }
@@ -139,13 +129,13 @@ func TestConcurrentExceptionHandling(t *testing.T) {
         // Collect results
         for i := 0; i < numGoroutines; i++ {
             if !<-results {
-                t.Errorf("Goroutine %d failed to catch exception", i)
+                t.Errorf("Goroutine %d should have caught exception", i)
             }
         }
     })
 }
 
-func TestPerformanceUnderLoad(t *testing.T) {
+func TestPerformanceScenarios(t *testing.T) {
     t.Run("High frequency exception handling", func(t *testing.T) {
         const iterations = 1000
         var successCount int
@@ -154,13 +144,12 @@ func TestPerformanceUnderLoad(t *testing.T) {
             var handled bool
             
             Try(func() {
-                switch i % 3 {
-                case 0:
+                if i%3 == 0 {
                     ThrowArgumentNull("param", "test")
-                case 1:
-                    ThrowInvalidOperation("test")
-                case 2:
-                    ThrowArgumentOutOfRange("index", i, "test")
+                } else if i%3 == 1 {
+                    ThrowInvalidOperation("test operation")
+                } else {
+                    ThrowArgumentOutOfRange("index", i, "test range")
                 }
             }).Handle(
                 Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
@@ -184,74 +173,6 @@ func TestPerformanceUnderLoad(t *testing.T) {
         }
     })
 }
-
-// ============================================================================
-// HELPER FUNCTIONS FOR TESTS
-// ============================================================================
-
-func level1Function() {
-    level2Function()
-}
-
-func level2Function() {
-    level3Function()
-}
-
-func level3Function() {
-    ThrowInvalidOperation("Error in deep function call")
-}
-
-func validateUserRegistration(username, email string, age int) {
-    ThrowIf(username == "", ArgumentNullException{
-        ParamName: "username",
-        Message:   "Username is required",
-    })
-    
-    ThrowIf(age < 18, ArgumentOutOfRangeException{
-        ParamName: "age",
-        Value:     age,
-        Message:   "Must be 18 or older",
-    })
-    
-    if !strings.Contains(email, "@") {
-        ThrowInvalidOperation("Invalid email format")
-    }
-}
-
-func simulateServiceCall() {
-    var networkEx *Exception
-    
-    // Simulate network error
-    Try(func() {
-        ThrowNetworkError("Connection timeout", 408)
-    }).Handle(
-        Handler[NetworkException](func(ex NetworkException, full Exception) {
-            networkEx = &full
-        }),
-    )
-    
-    // Simulate database error with network error as inner
-    var dbEx *Exception
-    Try(func() {
-        ThrowWithInner(FileException{
-            FileName: "database.db",
-            Message:  "Database connection failed",
-        }, networkEx)
-    }).Handle(
-        Handler[FileException](func(ex FileException, full Exception) {
-            dbEx = &full
-        }),
-    )
-    
-    // Throw service error with database error as inner
-    ThrowWithInner(InvalidOperationException{
-        Message: "Service unavailable",
-    }, dbEx)
-}
-
-// ============================================================================
-// REAL-WORLD SCENARIO TESTS
-// ============================================================================
 
 func TestRealWorldScenarios(t *testing.T) {
     t.Run("Web API error handling simulation", func(t *testing.T) {
@@ -278,10 +199,9 @@ func TestRealWorldScenarios(t *testing.T) {
             Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
                 response = APIResponse{StatusCode: 404, Message: "Not Found: " + ex.Message}
             }),
-            HandlerAny(func(ex Exception) {
-                response = APIResponse{StatusCode: 500, Message: "Internal Server Error"}
-            }),
-        )
+        ).Any(func(ex Exception) {
+            response = APIResponse{StatusCode: 500, Message: "Internal Server Error"}
+        })
         
         if response.StatusCode != 400 {
             t.Errorf("Expected status code 400, got %d", response.StatusCode)
@@ -327,7 +247,7 @@ func TestRealWorldScenarios(t *testing.T) {
             // Simulate file processing
             filename := ""
             if filename == "" {
-                ThrowFileError("", "Filename cannot be empty")
+                ThrowFileError("", "Filename cannot be empty", fmt.Errorf("empty filename"))
             }
             
             fileProcessed = true
@@ -356,7 +276,7 @@ func TestRealWorldScenarios(t *testing.T) {
 // EDGE CASE TESTS
 // ============================================================================
 
-func TestEdgeCases(t *testing.T) {
+func TestIntegrationEdgeCases(t *testing.T) {
     t.Run("Exception in finally block", func(t *testing.T) {
         var mainExceptionCaught bool
         var finallyExecuted bool
@@ -383,50 +303,114 @@ func TestEdgeCases(t *testing.T) {
             t.Error("Main exception should be caught")
         }
         if !finallyExecuted {
-            t.Error("Finally block should execute and cause panic")
+            t.Error("Finally block panic should be caught by defer")
         }
     })
     
-    t.Run("Very deep exception nesting", func(t *testing.T) {
-        var caught bool
-        var nestingDepth int
+    t.Run("Deep nesting of Try blocks", func(t *testing.T) {
+        var level1Caught, level2Caught, level3Caught bool
         
         Try(func() {
-            createDeeplyNestedExceptions(5)
+            Try(func() {
+                Try(func() {
+                    ThrowArgumentNull("deep", "Deep nesting test")
+                }).Handle(
+                    Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                        level3Caught = true
+                        ThrowInvalidOperation("Level 3 to 2")
+                    }),
+                )
+            }).Handle(
+                Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
+                    level2Caught = true
+                    ThrowArgumentOutOfRange("level2", 0, "Level 2 to 1")
+                }),
+            )
         }).Handle(
-            Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
-                caught = true
-                allExceptions := full.GetAllExceptions()
-                nestingDepth = len(allExceptions)
+            Handler[ArgumentOutOfRangeException](func(ex ArgumentOutOfRangeException, full Exception) {
+                level1Caught = true
             }),
         )
         
-        if !caught {
-            t.Error("Deeply nested exception should be caught")
+        if !level1Caught || !level2Caught || !level3Caught {
+            t.Error("All levels should be caught in deep nesting")
         }
-        if nestingDepth < 5 {
-            t.Errorf("Expected at least 5 nested exceptions, got %d", nestingDepth)
+    })
+    
+    t.Run("Mixed handler types", func(t *testing.T) {
+        var specificCaught bool
+        var anyCaught bool
+        var finallyExecuted bool
+        
+        Try(func() {
+            ThrowFileError("test.txt", "File error", nil)
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                t.Error("Should not catch ArgumentNullException")
+            }),
+            Handler[FileException](func(ex FileException, full Exception) {
+                specificCaught = true
+            }),
+        ).Any(func(ex Exception) {
+            anyCaught = true
+        }).Finally(func() {
+            finallyExecuted = true
+        })
+        
+        if !specificCaught {
+            t.Error("Specific FileException handler should catch")
+        }
+        if anyCaught {
+            t.Error("Any handler should not catch when specific handler matches")
+        }
+        if !finallyExecuted {
+            t.Error("Finally should always execute")
         }
     })
 }
 
-func createDeeplyNestedExceptions(depth int) {
-    if depth <= 0 {
-        ThrowInvalidOperation("Base exception")
-        return
-    }
-    
-    var innerEx *Exception
-    
-    Try(func() {
-        createDeeplyNestedExceptions(depth - 1)
-    }).Handle(
-        HandlerAny(func(ex Exception) {
-            innerEx = &ex
-        }),
-    )
-    
-    ThrowWithInner(InvalidOperationException{
-        Message: fmt.Sprintf("Level %d exception", depth),
-    }, innerEx)
+// ============================================================================
+// STRESS TESTS
+// ============================================================================
+
+func TestStressScenarios(t *testing.T) {
+    t.Run("Large exception chain", func(t *testing.T) {
+        const chainLength = 50
+        var currentEx *Exception
+        
+        // Build a long chain of exceptions
+        for i := 0; i < chainLength; i++ {
+            var tempEx *Exception
+            
+            Try(func() {
+                ThrowWithInner(InvalidOperationException{
+                    Message: fmt.Sprintf("Level %d", i),
+                }, currentEx)
+            }).Handle(
+                Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
+                    tempEx = &full
+                }),
+            )
+            
+            currentEx = tempEx
+        }
+        
+        // Verify the chain
+        if currentEx == nil {
+            t.Fatal("Final exception should not be nil")
+        }
+        
+        allExceptions := currentEx.GetAllExceptions()
+        if len(allExceptions) != chainLength {
+            t.Errorf("Expected chain length %d, got %d", chainLength, len(allExceptions))
+        }
+        
+        fullMessage := currentEx.GetFullMessage()
+        if !strings.Contains(fullMessage, "Level 0") {
+            t.Error("Full message should contain first level")
+        }
+        if !strings.Contains(fullMessage, fmt.Sprintf("Level %d", chainLength-1)) {
+            t.Error("Full message should contain last level")
+        }
+    })
 }

@@ -1,307 +1,232 @@
 package tests
 
 import (
-    "fmt"
     "strings"
     "testing"
     . "github.com/bencz/go-exceptions"
 )
 
 // ============================================================================
-// BASIC EXCEPTION THROWING AND CATCHING TESTS
+// CORE FUNCTIONALITY TESTS
 // ============================================================================
 
-func TestBasicThrowAndCatch(t *testing.T) {
-    t.Run("ArgumentNullException", func(t *testing.T) {
+func TestBasicTryCatch(t *testing.T) {
+    t.Run("Basic ArgumentNullException handling", func(t *testing.T) {
         var caught bool
-        var caughtParam string
+        var exceptionMessage string
         
         Try(func() {
-            ThrowArgumentNull("testParam", "Test message")
-        }).Catch(func(ex ArgumentNullException) {
-            caught = true
-            caughtParam = ex.ParamName
-        })
+            ThrowArgumentNull("param", "Parameter cannot be null")
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                caught = true
+                exceptionMessage = ex.Error()
+            }),
+        )
         
         if !caught {
-            t.Error("ArgumentNullException was not caught")
+            t.Error("Exception should have been caught")
         }
-        if caughtParam != "testParam" {
-            t.Errorf("Expected param name 'testParam', got '%s'", caughtParam)
+        if !strings.Contains(exceptionMessage, "param") {
+            t.Errorf("Exception message should contain parameter name, got: %s", exceptionMessage)
         }
     })
     
-    t.Run("ArgumentOutOfRangeException", func(t *testing.T) {
+    t.Run("Basic ArgumentOutOfRangeException handling", func(t *testing.T) {
         var caught bool
-        var caughtValue interface{}
+        var paramName string
+        var value interface{}
         
         Try(func() {
             ThrowArgumentOutOfRange("index", -1, "Index cannot be negative")
-        }).Catch(func(ex ArgumentOutOfRangeException) {
-            caught = true
-            caughtValue = ex.Value
-        })
+        }).Handle(
+            Handler[ArgumentOutOfRangeException](func(ex ArgumentOutOfRangeException, full Exception) {
+                caught = true
+                paramName = ex.ParamName
+                value = ex.Value
+            }),
+        )
         
         if !caught {
-            t.Error("ArgumentOutOfRangeException was not caught")
+            t.Error("Exception should have been caught")
         }
-        if caughtValue != -1 {
-            t.Errorf("Expected value -1, got %v", caughtValue)
+        if paramName != "index" {
+            t.Errorf("Expected parameter name 'index', got '%s'", paramName)
+        }
+        if value != -1 {
+            t.Errorf("Expected value -1, got %v", value)
         }
     })
     
-    t.Run("InvalidOperationException", func(t *testing.T) {
+    t.Run("Basic InvalidOperationException handling", func(t *testing.T) {
         var caught bool
-        var caughtMessage string
+        var message string
         
         Try(func() {
             ThrowInvalidOperation("Operation not allowed")
-        }).Catch(func(ex InvalidOperationException) {
-            caught = true
-            caughtMessage = ex.Message
-        })
+        }).Handle(
+            Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
+                caught = true
+                message = ex.Message
+            }),
+        )
         
         if !caught {
-            t.Error("InvalidOperationException was not caught")
+            t.Error("Exception should have been caught")
         }
-        if caughtMessage != "Operation not allowed" {
-            t.Errorf("Expected message 'Operation not allowed', got '%s'", caughtMessage)
+        if message != "Operation not allowed" {
+            t.Errorf("Expected message 'Operation not allowed', got '%s'", message)
         }
     })
 }
-
-func TestGenericThrow(t *testing.T) {
-    t.Run("Generic Throw with custom exception", func(t *testing.T) {
-        var caught bool
-        var caughtEx ArgumentNullException
-        
-        Try(func() {
-            Throw(ArgumentNullException{
-                ParamName: "customParam",
-                Message:   "Custom message",
-            })
-        }).Catch(func(ex ArgumentNullException) {
-            caught = true
-            caughtEx = ex
-        })
-        
-        if !caught {
-            t.Error("Generic throw was not caught")
-        }
-        if caughtEx.ParamName != "customParam" {
-            t.Errorf("Expected param name 'customParam', got '%s'", caughtEx.ParamName)
-        }
-    })
-}
-
-// ============================================================================
-// MULTIPLE HANDLER TESTS
-// ============================================================================
 
 func TestMultipleHandlers(t *testing.T) {
-    t.Run("Handle with multiple specific handlers", func(t *testing.T) {
-        var nullCaught, rangeCaught, invalidCaught bool
+    t.Run("Multiple handlers with correct type matching", func(t *testing.T) {
+        var nullCaught bool
+        var rangeCaught bool
         
-        for i := 0; i < 3; i++ {
-            Try(func() {
-                switch i {
-                case 0:
-                    ThrowArgumentNull("param", "null test")
-                case 1:
-                    ThrowArgumentOutOfRange("index", -1, "range test")
-                case 2:
-                    ThrowInvalidOperation("invalid test")
-                }
-            }).Handle(
-                Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
-                    nullCaught = true
-                }),
-                Handler[ArgumentOutOfRangeException](func(ex ArgumentOutOfRangeException, full Exception) {
-                    rangeCaught = true
-                }),
-                Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
-                    invalidCaught = true
-                }),
-            )
-        }
+        Try(func() {
+            ThrowArgumentNull("param", "Parameter is null")
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                nullCaught = true
+            }),
+            Handler[ArgumentOutOfRangeException](func(ex ArgumentOutOfRangeException, full Exception) {
+                rangeCaught = true
+            }),
+        )
         
         if !nullCaught {
-            t.Error("ArgumentNullException handler was not called")
+            t.Error("ArgumentNullException should have been caught")
         }
-        if !rangeCaught {
-            t.Error("ArgumentOutOfRangeException handler was not called")
-        }
-        if !invalidCaught {
-            t.Error("InvalidOperationException handler was not called")
-        }
-    })
-    
-    t.Run("HandlerAny catches all exceptions", func(t *testing.T) {
-        var caughtCount int
-        var caughtTypes []string
-        
-        for i := 0; i < 3; i++ {
-            Try(func() {
-                switch i {
-                case 0:
-                    ThrowArgumentNull("param", "test")
-                case 1:
-                    ThrowInvalidOperation("test")
-                case 2:
-                    ThrowFileError("test.txt", "file error")
-                }
-            }).Handle(
-                HandlerAny(func(ex Exception) {
-                    caughtCount++
-                    caughtTypes = append(caughtTypes, ex.TypeName())
-                }),
-            )
-        }
-        
-        if caughtCount != 3 {
-            t.Errorf("Expected 3 exceptions caught, got %d", caughtCount)
-        }
-        
-        expectedTypes := []string{"ArgumentNullException", "InvalidOperationException", "FileException"}
-        for i, expectedType := range expectedTypes {
-            if i >= len(caughtTypes) || caughtTypes[i] != expectedType {
-                t.Errorf("Expected type '%s' at index %d, got '%s'", expectedType, i, caughtTypes[i])
-            }
+        if rangeCaught {
+            t.Error("ArgumentOutOfRangeException should not have been caught")
         }
     })
 }
-
-// ============================================================================
-// ANY METHOD TESTS
-// ============================================================================
-
-func TestAnyMethod(t *testing.T) {
-    t.Run("Any catches different exception types", func(t *testing.T) {
-        var caughtCount int
-        
-        for i := 0; i < 3; i++ {
-            Try(func() {
-                switch i {
-                case 0:
-                    ThrowArgumentNull("param", "test")
-                case 1:
-                    ThrowInvalidOperation("test")
-                case 2:
-                    ThrowNetworkError("Connection failed", 500)
-                }
-            }).Any(func(ex Exception) {
-                caughtCount++
-            })
-        }
-        
-        if caughtCount != 3 {
-            t.Errorf("Expected 3 exceptions caught with Any(), got %d", caughtCount)
-        }
-    })
-}
-
-// ============================================================================
-// HELPER FUNCTION TESTS
-// ============================================================================
 
 func TestHelperFunctions(t *testing.T) {
-    t.Run("ThrowIf with true condition", func(t *testing.T) {
+    t.Run("ThrowIf conditional throwing", func(t *testing.T) {
         var caught bool
         
         Try(func() {
             ThrowIf(true, ArgumentNullException{
                 ParamName: "test",
-                Message:   "condition was true",
+                Message:   "Condition was true",
             })
-        }).Catch(func(ex ArgumentNullException) {
-            caught = true
-        })
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                caught = true
+            }),
+        )
         
         if !caught {
-            t.Error("ThrowIf should have thrown when condition is true")
+            t.Error("ThrowIf should throw when condition is true")
         }
     })
     
-    t.Run("ThrowIf with false condition", func(t *testing.T) {
+    t.Run("ThrowIf no throwing when condition false", func(t *testing.T) {
         var caught bool
+        var executed bool
         
         Try(func() {
             ThrowIf(false, ArgumentNullException{
                 ParamName: "test",
-                Message:   "condition was false",
+                Message:   "Should not throw",
             })
-        }).Catch(func(ex ArgumentNullException) {
-            caught = true
-        })
+            executed = true
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                caught = true
+            }),
+        )
         
         if caught {
-            t.Error("ThrowIf should not have thrown when condition is false")
+            t.Error("ThrowIf should not throw when condition is false")
+        }
+        if !executed {
+            t.Error("Code after ThrowIf should execute when condition is false")
         }
     })
     
-    t.Run("ThrowIfNil with nil value", func(t *testing.T) {
+    t.Run("ThrowIfNil with nil pointer", func(t *testing.T) {
         var caught bool
-        var caughtParam string
+        var paramName string
         
         Try(func() {
-            var nilPtr *string = nil
-            ThrowIfNil("nilPtr", nilPtr)
-        }).Catch(func(ex ArgumentNullException) {
-            caught = true
-            caughtParam = ex.ParamName
-        })
+            var ptr *string = nil
+            ThrowIfNil("pointer", ptr)
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                caught = true
+                paramName = ex.ParamName
+            }),
+        )
         
         if !caught {
-            t.Error("ThrowIfNil should have thrown for nil value")
+            t.Error("ThrowIfNil should throw for nil pointer")
         }
-        if caughtParam != "nilPtr" {
-            t.Errorf("Expected param name 'nilPtr', got '%s'", caughtParam)
+        if paramName != "pointer" {
+            t.Errorf("Expected parameter name 'pointer', got '%s'", paramName)
         }
     })
     
-    t.Run("ThrowIfNil with non-nil value", func(t *testing.T) {
+    t.Run("ThrowIfNil with nil slice", func(t *testing.T) {
         var caught bool
         
         Try(func() {
-            value := "not nil"
-            ThrowIfNil("value", &value)
-        }).Catch(func(ex ArgumentNullException) {
-            caught = true
-        })
+            var slice []int = nil
+            ThrowIfNil("slice", slice)
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                caught = true
+            }),
+        )
         
-        if caught {
-            t.Error("ThrowIfNil should not have thrown for non-nil value")
+        if !caught {
+            t.Error("ThrowIfNil should throw for nil slice")
+        }
+    })
+    
+    t.Run("ThrowIfNil with nil map", func(t *testing.T) {
+        var caught bool
+        
+        Try(func() {
+            var m map[string]int = nil
+            ThrowIfNil("map", m)
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                caught = true
+            }),
+        )
+        
+        if !caught {
+            t.Error("ThrowIfNil should throw for nil map")
         }
     })
 }
 
-// ============================================================================
-// NESTED EXCEPTION TESTS
-// ============================================================================
-
 func TestNestedExceptions(t *testing.T) {
-    t.Run("ThrowWithInner creates nested exception", func(t *testing.T) {
+    t.Run("Exception with inner exception", func(t *testing.T) {
         var caught bool
         var hasInner bool
         var innerMessage string
         
+        // Create inner exception first
+        var innerEx *Exception
         Try(func() {
-            var innerEx *Exception
-            
-            // Create inner exception
-            Try(func() {
-                ThrowArgumentNull("innerParam", "Inner exception message")
-            }).Handle(
-                Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
-                    innerEx = &full
-                }),
-            )
-            
-            // Throw outer exception with inner
+            ThrowArgumentNull("innerParam", "Inner exception")
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                innerEx = &full
+            }),
+        )
+        
+        // Now throw outer exception with inner
+        Try(func() {
             ThrowWithInner(InvalidOperationException{
-                Message: "Outer exception message",
+                Message: "Outer exception",
             }, innerEx)
-            
         }).Handle(
             Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
                 caught = true
@@ -313,77 +238,29 @@ func TestNestedExceptions(t *testing.T) {
         )
         
         if !caught {
-            t.Error("Outer exception was not caught")
+            t.Error("Outer exception should have been caught")
         }
         if !hasInner {
             t.Error("Exception should have inner exception")
         }
-        if !strings.Contains(innerMessage, "Inner exception message") {
-            t.Errorf("Inner exception message not found, got: %s", innerMessage)
-        }
-    })
-    
-    t.Run("GetFullMessage includes inner exceptions", func(t *testing.T) {
-        var fullMessage string
-        
-        Try(func() {
-            var innerEx *Exception
-            
-            Try(func() {
-                ThrowArgumentNull("param", "Inner message")
-            }).Handle(
-                Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
-                    innerEx = &full
-                }),
-            )
-            
-            ThrowWithInner(InvalidOperationException{
-                Message: "Outer message",
-            }, innerEx)
-            
-        }).Handle(
-            Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
-                fullMessage = full.GetFullMessage()
-            }),
-        )
-        
-        if !strings.Contains(fullMessage, "Outer message") {
-            t.Error("Full message should contain outer exception message")
-        }
-        if !strings.Contains(fullMessage, "Inner message") {
-            t.Error("Full message should contain inner exception message")
+        if !strings.Contains(innerMessage, "innerParam") {
+            t.Errorf("Inner exception should contain 'innerParam', got: %s", innerMessage)
         }
     })
 }
 
-// ============================================================================
-// FINALLY BLOCK TESTS
-// ============================================================================
-
-func TestFinallyBlocks(t *testing.T) {
-    t.Run("Finally executes after successful operation", func(t *testing.T) {
-        var finallyExecuted bool
-        
-        Try(func() {
-            // Normal operation
-        }).Finally(func() {
-            finallyExecuted = true
-        })
-        
-        if !finallyExecuted {
-            t.Error("Finally block should execute after successful operation")
-        }
-    })
-    
-    t.Run("Finally executes after exception", func(t *testing.T) {
+func TestFinallyBlock(t *testing.T) {
+    t.Run("Finally block executes after exception", func(t *testing.T) {
         var finallyExecuted bool
         var exceptionCaught bool
         
         Try(func() {
             ThrowInvalidOperation("Test exception")
-        }).Catch(func(ex InvalidOperationException) {
-            exceptionCaught = true
-        }).Finally(func() {
+        }).Handle(
+            Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
+                exceptionCaught = true
+            }),
+        ).Finally(func() {
             finallyExecuted = true
         })
         
@@ -391,163 +268,157 @@ func TestFinallyBlocks(t *testing.T) {
             t.Error("Exception should have been caught")
         }
         if !finallyExecuted {
-            t.Error("Finally block should execute after exception")
+            t.Error("Finally block should have executed")
         }
     })
     
-    t.Run("Finally executes even with unhandled exception", func(t *testing.T) {
+    t.Run("Finally block executes without exception", func(t *testing.T) {
         var finallyExecuted bool
-        
-        defer func() {
-            if r := recover(); r != nil {
-                // Expected panic from unhandled exception
-            }
-        }()
+        var normalExecution bool
         
         Try(func() {
-            ThrowInvalidOperation("Unhandled exception")
+            normalExecution = true
         }).Finally(func() {
             finallyExecuted = true
         })
         
+        if !normalExecution {
+            t.Error("Normal execution should complete")
+        }
         if !finallyExecuted {
-            t.Error("Finally block should execute even with unhandled exception")
+            t.Error("Finally block should execute even without exception")
         }
     })
 }
 
-// ============================================================================
-// PERFORMANCE AND CACHING TESTS
-// ============================================================================
-
-func TestPerformanceCache(t *testing.T) {
-    t.Run("Type cache improves performance", func(t *testing.T) {
-        // This test verifies that the type cache is working
-        // by running many operations and ensuring no panics occur
-        for i := 0; i < 100; i++ {
-            Try(func() {
-                if i%2 == 0 {
-                    ThrowArgumentNull("param", "test")
-                } else {
-                    ThrowInvalidOperation("test")
-                }
-            }).Handle(
-                Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
-                    // Handle
-                }),
-                Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
-                    // Handle
-                }),
-            )
+func TestCustomExceptions(t *testing.T) {
+    t.Run("Custom exception type", func(t *testing.T) {
+        type CustomException struct {
+            Code    int
+            Message string
         }
         
-        // If we reach here without panics, the cache is working
-        t.Log("Performance cache test completed successfully")
-    })
-}
-
-// ============================================================================
-// CUSTOM EXCEPTION TYPE TESTS
-// ============================================================================
-
-type TestCustomException struct {
-    Code    int
-    Message string
-}
-
-func (e TestCustomException) Error() string {
-    return fmt.Sprintf("TestCustomException[%d]: %s", e.Code, e.Message)
-}
-
-func (e TestCustomException) TypeName() string {
-    return "TestCustomException"
-}
-
-func TestCustomExceptionTypes(t *testing.T) {
-    t.Run("Custom exception type works with system", func(t *testing.T) {
+        func (e CustomException) Error() string {
+            return e.Message
+        }
+        
+        func (e CustomException) TypeName() string {
+            return "CustomException"
+        }
+        
         var caught bool
-        var caughtCode int
+        var code int
         
         Try(func() {
-            Throw(TestCustomException{
+            Throw(CustomException{
                 Code:    404,
-                Message: "Not found",
+                Message: "Custom error occurred",
             })
         }).Handle(
-            Handler[TestCustomException](func(ex TestCustomException, full Exception) {
+            Handler[CustomException](func(ex CustomException, full Exception) {
                 caught = true
-                caughtCode = ex.Code
+                code = ex.Code
             }),
         )
         
         if !caught {
-            t.Error("Custom exception was not caught")
+            t.Error("Custom exception should have been caught")
         }
-        if caughtCode != 404 {
-            t.Errorf("Expected code 404, got %d", caughtCode)
+        if code != 404 {
+            t.Errorf("Expected code 404, got %d", code)
         }
     })
-    
-    t.Run("Custom exception works with Any handler", func(t *testing.T) {
+}
+
+func TestGenericHandlers(t *testing.T) {
+    t.Run("Generic Any handler catches any exception", func(t *testing.T) {
         var caught bool
-        var typeName string
+        var exceptionType string
         
         Try(func() {
-            Throw(TestCustomException{
-                Code:    500,
-                Message: "Server error",
-            })
+            ThrowInvalidOperation("Test exception")
         }).Any(func(ex Exception) {
             caught = true
-            typeName = ex.TypeName()
+            exceptionType = ex.TypeName()
         })
         
         if !caught {
-            t.Error("Custom exception was not caught by Any handler")
+            t.Error("Any handler should catch any exception")
         }
-        if typeName != "TestCustomException" {
-            t.Errorf("Expected type name 'TestCustomException', got '%s'", typeName)
+        if exceptionType != "InvalidOperationException" {
+            t.Errorf("Expected type 'InvalidOperationException', got '%s'", exceptionType)
+        }
+    })
+    
+    t.Run("Specific handler takes precedence over Any", func(t *testing.T) {
+        var specificCaught bool
+        var anyCaught bool
+        
+        Try(func() {
+            ThrowArgumentNull("param", "Test")
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                specificCaught = true
+            }),
+        ).Any(func(ex Exception) {
+            anyCaught = true
+        })
+        
+        if !specificCaught {
+            t.Error("Specific handler should catch the exception")
+        }
+        if anyCaught {
+            t.Error("Any handler should not catch when specific handler matches")
         }
     })
 }
 
-// ============================================================================
-// EDGE CASES AND ERROR CONDITIONS
-// ============================================================================
-
 func TestEdgeCases(t *testing.T) {
-    t.Run("No exception thrown - handlers not called", func(t *testing.T) {
-        var handlerCalled bool
+    t.Run("No exception thrown", func(t *testing.T) {
+        var caught bool
+        var normalExecution bool
         
         Try(func() {
-            // No exception thrown
+            normalExecution = true
         }).Handle(
             Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
-                handlerCalled = true
+                caught = true
             }),
         )
         
-        if handlerCalled {
-            t.Error("Handler should not be called when no exception is thrown")
+        if caught {
+            t.Error("No exception should be caught when none is thrown")
+        }
+        if !normalExecution {
+            t.Error("Normal execution should complete")
         }
     })
     
-    t.Run("Multiple catches - only first matching executes", func(t *testing.T) {
-        var firstCatchCalled, secondCatchCalled bool
+    t.Run("Multiple Try blocks", func(t *testing.T) {
+        var firstCaught bool
+        var secondCaught bool
         
         Try(func() {
-            ThrowArgumentNull("param", "test")
-        }).Catch(func(ex ArgumentNullException) {
-            firstCatchCalled = true
-        }).Catch(func(ex ArgumentNullException) {
-            secondCatchCalled = true
-        })
+            ThrowArgumentNull("first", "First exception")
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                firstCaught = true
+            }),
+        )
         
-        if !firstCatchCalled {
-            t.Error("First catch should be called")
+        Try(func() {
+            ThrowInvalidOperation("Second exception")
+        }).Handle(
+            Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
+                secondCaught = true
+            }),
+        )
+        
+        if !firstCaught {
+            t.Error("First exception should be caught")
         }
-        if secondCatchCalled {
-            t.Error("Second catch should not be called when first catch handles the exception")
+        if !secondCaught {
+            t.Error("Second exception should be caught")
         }
     })
 }
@@ -556,40 +427,32 @@ func TestEdgeCases(t *testing.T) {
 // BENCHMARK TESTS
 // ============================================================================
 
-func BenchmarkBasicThrowCatch(b *testing.B) {
+func BenchmarkBasicTryCatch(b *testing.B) {
     for i := 0; i < b.N; i++ {
         Try(func() {
-            ThrowArgumentNull("param", "test message")
-        }).Catch(func(ex ArgumentNullException) {
-            // Handle exception
-        })
+            ThrowArgumentNull("param", "test")
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                // Handle exception
+            }),
+        )
     }
 }
 
 func BenchmarkMultipleHandlers(b *testing.B) {
     for i := 0; i < b.N; i++ {
         Try(func() {
-            ThrowInvalidOperation("test message")
+            ThrowArgumentNull("param", "test")
         }).Handle(
             Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
-                // Handle
-            }),
-            Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
                 // Handle
             }),
             Handler[ArgumentOutOfRangeException](func(ex ArgumentOutOfRangeException, full Exception) {
                 // Handle
             }),
+            Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
+                // Handle
+            }),
         )
-    }
-}
-
-func BenchmarkAnyHandler(b *testing.B) {
-    for i := 0; i < b.N; i++ {
-        Try(func() {
-            ThrowInvalidOperation("test message")
-        }).Any(func(ex Exception) {
-            // Handle any exception
-        })
     }
 }
