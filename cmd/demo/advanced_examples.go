@@ -173,13 +173,13 @@ func runRetryPatternExample() {
         Try(func() {
             // Simulate operation that fails first 2 times
             if attempt < 3 {
-                ThrowNetworkError("https://api.example.com", "Connection failed", fmt.Errorf("status code: 500"))
+                ThrowNetworkError("Connection failed", 500)
             }
             success = true
             fmt.Printf("   Operation succeeded on attempt %d\n", attempt)
         }).Handle(
             Handler[NetworkException](func(ex NetworkException, full Exception) {
-                fmt.Printf("   Attempt %d failed: %s (URL: %s)\n", attempt, ex.Message, ex.URL)
+                fmt.Printf("   Attempt %d failed: %s (Status: %d)\n", attempt, ex.Message, ex.StatusCode)
                 if attempt == maxRetries {
                     fmt.Printf("   Max retries reached, operation failed\n")
                 }
