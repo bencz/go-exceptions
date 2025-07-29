@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/bencz/go-exceptions)](https://goreportcard.com/report/github.com/bencz/go-exceptions)
 [![GoDoc](https://godoc.org/github.com/bencz/go-exceptions?status.svg)](https://godoc.org/github.com/bencz/go-exceptions)
-[![Coverage](https://img.shields.io/badge/Coverage-95%25-brightgreen.svg)](https://github.com/bencz/go-exceptions)
+[![Coverage](https://img.shields.io/badge/Coverage-97%25-brightgreen.svg)](https://github.com/bencz/go-exceptions)
 
 A robust try/catch/finally exception handling system for Go using generics and reflection. Provides clean, type-safe exception handling with multiple syntaxes, nested exceptions, custom types, and performance optimization.
 
@@ -18,7 +18,7 @@ A robust try/catch/finally exception handling system for Go using generics and r
 - **Finally Blocks**: Guaranteed cleanup code execution
 - **Helper Functions**: ThrowIf, ThrowIfNil for common validations
 - **Stack Traces**: Automatic capture and formatting
-- **Comprehensive Tests**: 95%+ test coverage with benchmarks
+- **Comprehensive Tests**: 97% test coverage with benchmarks
 
 ## Installation
 
