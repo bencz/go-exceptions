@@ -6,7 +6,7 @@ import (
 )
 
 // Simple demonstration of the exception system
-func SimpleDemo() {
+func main() {
     fmt.Println("=== Simple Exception Demo ===")
     
     // Example 1: Basic Try/Catch

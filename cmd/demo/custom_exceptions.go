@@ -84,7 +84,7 @@ func ThrowAuthenticationError(username, reason string) {
 // EXAMPLES USING CUSTOM EXCEPTIONS
 // ============================================================================
 
-func CustomExceptionExamples() {
+func main() {
     fmt.Println("\n=== Custom Exception Examples ===")
     
     // Example 1: Database exception

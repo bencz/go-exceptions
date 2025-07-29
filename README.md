@@ -377,6 +377,7 @@ go run ./cmd/demo/basic_examples.go    # Basic usage patterns and syntax
 # Advanced Examples
 go run ./cmd/demo/advanced_examples.go # Advanced features and complex scenarios
 go run ./cmd/demo/custom_exceptions.go # Custom exception types and usage
+go run ./cmd/demo/panic_test.go        # Simple panic handling test
 ```
 
 ## Using as Package

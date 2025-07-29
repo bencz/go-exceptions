@@ -9,7 +9,7 @@ import (
 
 // Basic examples demonstrating the exception system
 
-func BasicExamples() {
+func main() {
     fmt.Println("=== Approach 1: Catch Function (Recommended) ===")
     result := Try(func() {
         ThrowArgumentNull("username", "Required for login")
