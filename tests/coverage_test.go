@@ -364,9 +364,11 @@ func TestBuilderPattern(t *testing.T) {
     t.Run("When().On() pattern", func(t *testing.T) {
         var caught bool
         
-        Try(func() {
+        builder := Try(func() {
             ThrowArgumentNull("param", "Test message")
-        }).When().On(func(ex ArgumentNullException, full Exception) {
+        }).When()
+        
+        On(builder, func(ex ArgumentNullException, full Exception) {
             caught = true
         }).End()
         
@@ -393,13 +395,15 @@ func TestBuilderPattern(t *testing.T) {
         var caught bool
         var finallyExecuted bool
         
-        Try(func() {
+        builder := Try(func() {
             ThrowArgumentNull("param", "Test")
-        }).When().On(func(ex ArgumentNullException, full Exception) {
+        }).When()
+        
+        On(builder, func(ex ArgumentNullException, full Exception) {
             caught = true
         }).Finally(func() {
             finallyExecuted = true
-        }).End()
+        })
         
         if !caught {
             t.Error("Exception should be caught")
