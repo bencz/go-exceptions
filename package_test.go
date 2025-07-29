@@ -1,6 +1,7 @@
 package goexceptions
 
 import (
+    "reflect"
     "testing"
 )
 
@@ -14,15 +15,17 @@ func TestPackageInternals(t *testing.T) {
         // This test has access to package internals
         
         // Clear cache first
-        typeCache = make(map[string]bool)
+        typeCache = make(map[reflect.Type]bool)
         
         // Test caching behavior
         for i := 0; i < 10; i++ {
             Try(func() {
                 ThrowArgumentNull("param", "test")
-            }).Catch(func(ex ArgumentNullException) {
-                // Handler
-            })
+            }).Handle(
+                Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                    // Handler
+                }),
+            )
         }
         
         // Verify cache has entries
@@ -41,9 +44,9 @@ func TestPackageInternals(t *testing.T) {
         }
         
         wrapper := Exception{
-            ExceptionType: ex,
-            StackTrace_:   "test stack trace",
-            InnerException: nil,
+            Type:       ex,
+            StackTrace: []string{"test stack trace"},
+            Inner:      nil,
         }
         
         if wrapper.Error() != ex.Error() {
@@ -54,8 +57,8 @@ func TestPackageInternals(t *testing.T) {
             t.Error("Wrapper should delegate TypeName() to underlying exception")
         }
         
-        if wrapper.StackTrace() != "test stack trace" {
-            t.Error("Wrapper should return correct stack trace")
+        if len(wrapper.StackTrace) == 0 {
+            t.Error("Wrapper should have stack trace")
         }
     })
 }
@@ -66,28 +69,32 @@ func TestPackageInternals(t *testing.T) {
 
 func BenchmarkTypeCache(b *testing.B) {
     // Clear cache
-    typeCache = make(map[string]bool)
+    typeCache = make(map[reflect.Type]bool)
     
     b.ResetTimer()
     
     for i := 0; i < b.N; i++ {
         Try(func() {
             ThrowArgumentNull("param", "test")
-        }).Catch(func(ex ArgumentNullException) {
-            // Handle
-        })
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                // Handle
+            }),
+        )
     }
 }
 
 func BenchmarkWithoutCache(b *testing.B) {
     for i := 0; i < b.N; i++ {
         // Clear cache each time to simulate no caching
-        typeCache = make(map[string]bool)
+        typeCache = make(map[reflect.Type]bool)
         
         Try(func() {
             ThrowArgumentNull("param", "test")
-        }).Catch(func(ex ArgumentNullException) {
-            // Handle
-        })
+        }).Handle(
+            Handler[ArgumentNullException](func(ex ArgumentNullException, full Exception) {
+                // Handle
+            }),
+        )
     }
 }

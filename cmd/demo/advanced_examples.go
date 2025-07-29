@@ -60,11 +60,9 @@ func runStackTraceExample() {
         Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
             fmt.Printf("   Exception: %s\n", ex.Message)
             fmt.Printf("   Stack trace (first 3 calls):\n")
-            stackTrace := full.StackTrace()
-            lines := strings.Split(stackTrace, "\n")
-            for i, line := range lines {
-                if i < 3 && strings.TrimSpace(line) != "" {
-                    fmt.Printf("     %s\n", strings.TrimSpace(line))
+            for i, trace := range full.StackTrace {
+                if i < 3 {
+                    fmt.Printf("     %s\n", trace)
                 }
             }
         }),
@@ -82,7 +80,7 @@ func runNestedExceptionsExample() {
         var innerException *Exception
         
         Try(func() {
-            ThrowFileError("database.db", "Connection failed")
+            ThrowFileError("database.db", "Connection failed", fmt.Errorf("network timeout"))
         }).Handle(
             Handler[FileException](func(ex FileException, full Exception) {
                 innerException = &full
@@ -102,7 +100,7 @@ func runNestedExceptionsExample() {
                 
                 // Look for FileException in the chain
                 if fileEx := FindInnerException[FileException](&full); fileEx != nil {
-                    fmt.Printf("   Problematic file: %s\n", fileEx.FileName)
+                    fmt.Printf("   Problematic file: %s\n", fileEx.Filename)
                 }
                 
                 fmt.Printf("   Total exceptions in chain: %d\n", len(full.GetAllExceptions()))
@@ -250,7 +248,7 @@ func runPanicHandlingExample() {
     // Test 1: Function A with try/catch calling Function B that panics
     fmt.Println("\n   Test 1: Try/Catch capturing native Go panic:")
     Try(func() {
-        functionA()
+        advancedFunctionA()
     }).Handle(
         Handler[InvalidOperationException](func(ex InvalidOperationException, full Exception) {
             fmt.Printf("     Caught InvalidOperation: %s\n", ex.Message)
@@ -296,15 +294,15 @@ func runPanicHandlingExample() {
     )
 }
 
-// Function A that calls Function B
-func functionA() {
+// Function A that calls Function B (renamed to avoid conflicts)
+func advancedFunctionA() {
     fmt.Printf("     Function A: calling Function B...\n")
-    functionB()
+    advancedFunctionB()
     fmt.Printf("     Function A: this should not print\n")
 }
 
-// Function B that panics
-func functionB() {
+// Function B that panics (renamed to avoid conflicts)
+func advancedFunctionB() {
     fmt.Printf("     Function B: about to panic...\n")
     panic("Native Go panic from Function B!")
 }

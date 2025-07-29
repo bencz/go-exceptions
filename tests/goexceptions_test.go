@@ -373,7 +373,7 @@ func TestGenericHandlers(t *testing.T) {
     })
 }
 
-func TestEdgeCases(t *testing.T) {
+func TestCoreEdgeCases(t *testing.T) {
     t.Run("No exception thrown", func(t *testing.T) {
         var caught bool
         var normalExecution bool

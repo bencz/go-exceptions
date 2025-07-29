@@ -90,7 +90,7 @@ func TestFileException(t *testing.T) {
         }
         
         if ex.Filename != "test.txt" {
-            t.Errorf("Expected filename 'test.txt', got '%s'", ex.Filename)
+            t.Errorf("Expected Filename 'test.txt', got '%s'", ex.Filename)
         }
         
         if ex.Message != "File not found" {
