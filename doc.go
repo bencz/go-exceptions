@@ -103,7 +103,7 @@ high performance, comprehensive testing (97.2% coverage), and clean APIs.
 	// Validation helpers
 	ThrowIfNil("config", config)
 	ThrowIf(len(users) == 0, InvalidOperationException{Message: "No users found"})
-	
+
 	// Specific exception helpers
 	ThrowArgumentNull("email", "Email address is required")
 	ThrowArgumentOutOfRange("age", age, "Age must be between 0 and 150")
@@ -121,16 +121,16 @@ Create custom exceptions by implementing the ExceptionType interface:
 	    Message   string
 	    ErrorCode int
 	}
-	
+
 	func (e DatabaseException) Error() string {
-	    return fmt.Sprintf("Database error [%d] on %s: %s (Query: %s)", 
+	    return fmt.Sprintf("Database error [%d] on %s: %s (Query: %s)",
 	        e.ErrorCode, e.Database, e.Message, e.Query)
 	}
-	
+
 	func (e DatabaseException) TypeName() string {
 	    return "DatabaseException"
 	}
-	
+
 	// Usage
 	Try(func() {
 	    Throw(DatabaseException{
@@ -158,7 +158,7 @@ Build exception chains with inner exceptions:
 	        // Access the full exception chain
 	        allExceptions := full.GetAllExceptions()
 	        fullMessage := full.GetFullMessage()
-	        
+
 	        // Find specific exception in chain
 	        if networkEx := FindInnerException[NetworkException](&full); networkEx != nil {
 	            log.Printf("Root cause was network issue: %s", networkEx.URL)
