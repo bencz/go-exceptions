@@ -361,7 +361,8 @@ go-exceptions/
 │       ├── advanced_examples.go # Advanced examples
 │       ├── custom_exceptions.go # Custom exception examples
 │       ├── quick_example.go    # Quick standalone example
-│       └── simple_demo.go      # Simple demo
+│       ├── simple_demo.go      # Simple demo
+│       └── test_panic.go       # Panic handling test
 ├── go.mod
 └── README.md
 ```
@@ -377,7 +378,7 @@ go run ./cmd/demo/basic_examples.go    # Basic usage patterns and syntax
 # Advanced Examples
 go run ./cmd/demo/advanced_examples.go # Advanced features and complex scenarios
 go run ./cmd/demo/custom_exceptions.go # Custom exception types and usage
-go run ./cmd/demo/panic_test.go        # Simple panic handling test
+go run ./cmd/demo/test_panic.go        # Simple panic handling test
 ```
 
 ## Using as Package
