@@ -646,3 +646,159 @@ func TestHandlerAnyCoverage(t *testing.T) {
         }
     })
 }
+
+func TestEdgeCasesCoverage(t *testing.T) {
+    t.Run("ThrowIfNil with more nil types", func(t *testing.T) {
+        // Test nil slice
+        var caught1 bool
+        Try(func() {
+            var slice []string = nil
+            ThrowIfNil("slice", slice)
+        }).Handle(
+            Handler[ArgumentNullException](func(e ArgumentNullException, full Exception) {
+                caught1 = true
+            }),
+        )
+        if !caught1 {
+            t.Error("ThrowIfNil should throw for nil slice")
+        }
+        
+        // Test nil map
+        var caught2 bool
+        Try(func() {
+            var m map[string]int = nil
+            ThrowIfNil("map", m)
+        }).Handle(
+            Handler[ArgumentNullException](func(e ArgumentNullException, full Exception) {
+                caught2 = true
+            }),
+        )
+        if !caught2 {
+            t.Error("ThrowIfNil should throw for nil map")
+        }
+        
+        // Test nil channel
+        var caught3 bool
+        Try(func() {
+            var ch chan int = nil
+            ThrowIfNil("channel", ch)
+        }).Handle(
+            Handler[ArgumentNullException](func(e ArgumentNullException, full Exception) {
+                caught3 = true
+            }),
+        )
+        if !caught3 {
+            t.Error("ThrowIfNil should throw for nil channel")
+        }
+        
+        // Test nil function
+        var caught4 bool
+        Try(func() {
+            var fn func() = nil
+            ThrowIfNil("function", fn)
+        }).Handle(
+            Handler[ArgumentNullException](func(e ArgumentNullException, full Exception) {
+                caught4 = true
+            }),
+        )
+        if !caught4 {
+            t.Error("ThrowIfNil should throw for nil function")
+        }
+        
+        // Test nil interface
+        var caught5 bool
+        Try(func() {
+            var iface interface{} = nil
+            ThrowIfNil("interface", iface)
+        }).Handle(
+            Handler[ArgumentNullException](func(e ArgumentNullException, full Exception) {
+                caught5 = true
+            }),
+        )
+        if !caught5 {
+            t.Error("ThrowIfNil should throw for nil interface")
+        }
+    })
+    
+    t.Run("GetException when no exception", func(t *testing.T) {
+        result := Try(func() {
+            // No exception thrown
+        })
+        
+        if result.HasException() {
+            t.Error("Should not have exception")
+        }
+        
+        ex := result.GetException()
+        if ex != nil {
+            t.Error("GetException should return nil when no exception")
+        }
+    })
+    
+    t.Run("Catch with no exception", func(t *testing.T) {
+        var caught bool
+        
+        result := Try(func() {
+            // No exception thrown
+        })
+        
+        Catch(result, func(ex ArgumentNullException, full Exception) {
+            caught = true
+        })
+        
+        if caught {
+            t.Error("Catch should not execute when no exception")
+        }
+    })
+    
+    t.Run("On with no exception", func(t *testing.T) {
+        var caught bool
+        
+        builder := Try(func() {
+            // No exception thrown
+        }).When()
+        
+        On(builder, func(ex ArgumentNullException, full Exception) {
+            caught = true
+        }).End()
+        
+        if caught {
+            t.Error("On should not execute when no exception")
+        }
+    })
+    
+    t.Run("Try with different panic types", func(t *testing.T) {
+        // Test panic with error
+        var caught1 bool
+        Try(func() {
+            panic(errors.New("error panic"))
+        }).Any(func(ex Exception) {
+            caught1 = true
+        })
+        if !caught1 {
+            t.Error("Should catch error panic")
+        }
+        
+        // Test panic with integer
+        var caught2 bool
+        Try(func() {
+            panic(42)
+        }).Any(func(ex Exception) {
+            caught2 = true
+        })
+        if !caught2 {
+            t.Error("Should catch integer panic")
+        }
+        
+        // Test panic with struct
+        var caught3 bool
+        Try(func() {
+            panic(struct{ msg string }{msg: "struct panic"})
+        }).Any(func(ex Exception) {
+            caught3 = true
+        })
+        if !caught3 {
+            t.Error("Should catch struct panic")
+        }
+    })
+}
