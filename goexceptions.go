@@ -28,6 +28,7 @@ func (e ArgumentNullException) TypeName() string {
 	return "ArgumentNullException"
 }
 
+// ArgumentOutOfRangeException ( comment to force new release... )
 type ArgumentOutOfRangeException struct {
 	ParamName string
 	Value     interface{}
