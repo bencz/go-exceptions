@@ -2,7 +2,6 @@
 
 [![Go Version](https://img.shields.io/badge/Go-1.24+-blue.svg)](https://golang.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/bencz/go-exceptions)](https://goreportcard.com/report/github.com/bencz/go-exceptions)
 [![GoDoc](https://godoc.org/github.com/bencz/go-exceptions?status.svg)](https://godoc.org/github.com/bencz/go-exceptions)
 [![Coverage](https://img.shields.io/badge/Coverage-97%25-brightgreen.svg)](https://github.com/bencz/go-exceptions)
 
